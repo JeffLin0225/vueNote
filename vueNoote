@@ -1,0 +1,246 @@
+<template>
+    <div class="board">
+      <!-- 大標題層 -->
+      <draggable
+        v-model="columns"
+        group="columns"
+        item-key="id"
+        :empty-insert-threshold="50"
+        :swap-threshold="0.3"
+        :fallback-tolerance="5"
+        ghost-class="drag-ghost"
+        chosen-class="drag-chosen"
+        class="board"
+      >
+        <template #item="{ element: col }">
+          <div class="column">
+            <div class="column-header">
+              <h3>{{ col.title }}</h3>
+              <button class="delete-btn" @click="removeColumn(col.id)">✕</button>
+            </div>
+  
+            <button class="add-sub-btn" @click="addSubCategory(col.id)">＋ 新增小標題</button>
+  
+            <!-- 小標題層 -->
+            <draggable
+              v-model="col.subCategories"
+              group="subCategories"
+              item-key="id"
+              :empty-insert-threshold="50"
+              :swap-threshold="0.3"
+              :fallback-tolerance="5"
+              ghost-class="drag-ghost"
+              chosen-class="drag-chosen"
+            >
+              <template v-if="col.subCategories.length === 0">
+                <div class="empty-placeholder">拖拉小標題到這裡</div>
+              </template>
+  
+              <template #item="{ element: sub }">
+                <div class="sub-column">
+                  <div class="sub-header">
+                    <template v-if="editingSubId === sub.id">
+                      <input
+                        v-model="sub.title"
+                        @blur="stopEditing"
+                        @keyup.enter="stopEditing"
+                        class="edit-input"
+                        autofocus
+                      />
+                    </template>
+                    <template v-else>
+                      <h4 @dblclick="startEditing(sub.id)">{{ sub.title }}</h4>
+                    </template>
+                    <button class="delete-btn" @click="removeSubCategory(col.id, sub.id)">✕</button>
+                  </div>
+  
+                  <button class="add-btn" @click="addItem(col.id, sub.id)">＋ 新增卡片</button>
+  
+                  <!-- 卡片層 -->
+                  <draggable
+                    v-model="sub.items"
+                    group="items"
+                    item-key="id"
+                    :empty-insert-threshold="50"
+                    :swap-threshold="0.3"
+                    :fallback-tolerance="5"
+                    ghost-class="drag-ghost"
+                    chosen-class="drag-chosen"
+                  >
+                    <template v-if="sub.items.length === 0">
+                      <div class="empty-placeholder">拖拉卡片到這裡</div>
+                    </template>
+  
+                    <template #item="{ element: item }">
+                      <div class="card">
+                        <div class="card-header">
+                          <button class="delete-btn" @click="removeItem(col.id, sub.id, item.id)">✕</button>
+                        </div>
+                        <input v-model="item.name" placeholder="名稱" />
+                        <input v-model.number="item.amount" type="number" placeholder="金額" />
+                        <textarea v-model="item.note" placeholder="備註"></textarea>
+                      </div>
+                    </template>
+                  </draggable>
+                </div>
+              </template>
+            </draggable>
+          </div>
+        </template>
+      </draggable>
+    </div>
+  </template>
+  
+  <script setup>
+  import { reactive, ref } from 'vue'
+  import draggable from 'vuedraggable'
+  
+  const columns = reactive([
+    {
+      id: 'asset',
+      title: '資產',
+      subCategories: [
+        {
+          id: 'cash',
+          title: '現金',
+          items: [{ id: 1, name: '錢包', amount: 5000, note: '' }]
+        }
+      ]
+    },
+    {
+      id: 'liability',
+      title: '負債',
+      subCategories: [
+        {
+          id: 'credit',
+          title: '信用卡',
+          items: [{ id: 2, name: '台新卡', amount: -2000, note: '水電費' }]
+        }
+      ]
+    },
+    {
+      id: 'other',
+      title: '其他',
+      subCategories: []
+    }
+  ])
+  
+  const editingSubId = ref(null)
+  function startEditing(subId) {
+    editingSubId.value = subId
+  }
+  function stopEditing() {
+    editingSubId.value = null
+  }
+  
+  function removeColumn(columnId) {
+    const idx = columns.findIndex(c => c.id === columnId)
+    if (idx !== -1) columns.splice(idx, 1)
+  }
+  function addSubCategory(columnId) {
+    const col = columns.find(c => c.id === columnId)
+    col.subCategories.push({ id: Date.now().toString(), title: '新小標題', items: [] })
+  }
+  function removeSubCategory(columnId, subId) {
+    const col = columns.find(c => c.id === columnId)
+    col.subCategories = col.subCategories.filter(s => s.id !== subId)
+  }
+  function addItem(columnId, subId) {
+    const col = columns.find(c => c.id === columnId)
+    const sub = col.subCategories.find(s => s.id === subId)
+    sub.items.push({ id: Date.now(), name: '', amount: 0, note: '' })
+  }
+  function removeItem(columnId, subId, itemId) {
+    const col = columns.find(c => c.id === columnId)
+    const sub = col.subCategories.find(s => s.id === subId)
+    sub.items = sub.items.filter(i => i.id !== itemId)
+  }
+  </script>
+  
+  <style scoped>
+  .board {
+    display: flex;
+    gap: 16px;
+  }
+  .column {
+    width: 320px;
+    min-height: 500px;
+    padding: 12px;
+    background: #f0f0f0;
+    border-radius: 4px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .column-header, .sub-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .sub-column {
+    background: #e8e8e8;
+    padding: 6px;
+    margin-bottom: 10px;
+    border-radius: 4px;
+    min-height: 120px;
+  }
+  .card {
+    background: white;
+    padding: 8px;
+    margin-bottom: 10px;
+    border: 1px solid #ddd;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .card-header {
+    display: flex;
+    justify-content: flex-end;
+  }
+  .delete-btn {
+    background: transparent;
+    border: none;
+    color: #888;
+    font-size: 14px;
+    cursor: pointer;
+  }
+  .delete-btn:hover {
+    color: red;
+  }
+  .add-btn, .add-sub-btn {
+    display: block;
+    width: 100%;
+    margin-bottom: 8px;
+    padding: 4px;
+    background: #4cafef;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+  .add-btn:hover, .add-sub-btn:hover {
+    background: #3a9bdc;
+  }
+  .edit-input {
+    width: 100%;
+    padding: 2px;
+    font-size: 14px;
+  }
+  .empty-placeholder {
+    min-height: 60px;
+    background: #fff8dc;
+    border: 1px dashed #ccc;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #888;
+  }
+  .drag-ghost {
+    background: rgba(0, 150, 255, 0.2);
+    border: 2px dashed #0096ff;
+  }
+  .drag-chosen {
+    opacity: 0.6;
+  }
+  </style>
+  
