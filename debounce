@@ -1,0 +1,69 @@
+<script setup>
+import { reactive, ref, watch } from 'vue'
+import draggable from 'vuedraggable'
+import Column from './Column.vue'
+import debounce from 'lodash.debounce'
+
+const columns = reactive([
+  { id: 'asset', title: '資產', subCategories: [] },
+  { id: 'liability', title: '負債', subCategories: [] },
+  { id: 'other', title: '其他', subCategories: [] }
+])
+
+const editingSubId = ref(null)
+const isSaving = ref(false)
+const isSaved = ref(false)
+
+// 模擬 API
+async function saveToServer(data) {
+  return new Promise(resolve => {
+    setTimeout(() => {
+      console.log('送出到後端:', JSON.stringify(data, null, 2))
+      resolve(true)
+    }, 800)
+  })
+}
+
+// debounce 包裝
+const debouncedSave = debounce(async () => {
+  isSaving.value = true
+  isSaved.value = false
+  await saveToServer(columns)
+  isSaving.value = false
+  isSaved.value = true
+  setTimeout(() => (isSaved.value = false), 2000)
+}, 500)
+
+// 監聽 columns 深層變化
+watch(columns, () => {
+  debouncedSave()
+}, { deep: true })
+
+// 其他操作（新增/刪除）
+const addSubCategory = (columnId) => {
+  const col = columns.find(c => c.id === columnId)
+  if (col) {
+    col.subCategories.push({ id: Date.now().toString(), title: '新小標題', items: [] })
+  }
+}
+</script>
+
+<template>
+  <div class="board">
+    <draggable v-model="columns" item-key="id" group="columns" class="board-container">
+      <template #item="{ element: col }">
+        <Column
+          :column="col"
+          :editing-sub-id="editingSubId"
+          @add-sub="addSubCategory"
+        />
+      </template>
+    </draggable>
+
+    <!-- 狀態提示 -->
+    <div>
+      <span v-if="isSaving">💾 儲存中...</span>
+      <span v-else-if="isSaved">✅ 已儲存</span>
+    </div>
+  </div>
+</template>
