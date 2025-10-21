@@ -1,4 +1,4 @@
 筆記:
-1. Mongo 時間改 ISO : 提升index 
-2. 完成剩下API
-3. 前端卡片顯示方式調整
+1. pycaret.regression
+2. airflow
+3. promethus + AI
